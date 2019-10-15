@@ -1,6 +1,6 @@
 # pro-cost-STC
 
-### 命令
+### 一、命令
 	1. 示例
 	```
 	del de_Sqmdct.txt
@@ -21,7 +21,7 @@
 	lt_extr_STC     de_Sqmdct.txt    n_msg_bits.txt    提取出来的信息.txt
 
 
-### 目录：
+### 二、目录：
 wav数据集：'D:\lt\数据集\dataset_128×1024（1声道，16 Khz, 32位，8s）'
 概率图：1500_pro
 载体mdct：2000_Qmdct_cover
