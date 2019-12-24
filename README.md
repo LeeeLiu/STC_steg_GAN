@@ -6,18 +6,18 @@
 1. 歌曲wav（双声道，44.1Khz, 32位，10s）以128 Kbps码率编码，得到Qmdct（未剪裁）
 	（ps：对于单声道，剪裁以后的时长 = 127*1024/16000 = 8.128 s）
 2. 目录结构，参见DIRECTORY.txt
-	wav数据集：wav_file
-	概率图：4000_pro
-	载体mdct：4000_Qmdct_cover
-	秘密信息：4000_message
-	提取出来的信息：4000_extr_msg
+	- wav数据集：wav_file
+	- 概率图：4000_pro
+	- 载体mdct：4000_Qmdct_cover
+	- 秘密信息：4000_message
+	- 提取出来的信息：4000_extr_msg
 
 ### 二、流程
 1. 为了得到128*1024尺寸，剪裁wav。剪裁以后时长 = 126*1024/44100/2 = 1.463 s 。（clip.py）
 	buf = sig[0: 63*1024, :]    #  因为是双声道
 
 2. 获取128*1024尺寸的Qmdct-cover（batch.py）
-	>faac_Qmdct_gen -o  2.m4a  -b 128 wav10s_00002.wav	# faac在控制台显示64帧（双声道）
+	`faac_Qmdct_generate -o  2.m4a  -b 128 wav10s_00002.wav`	# faac在控制台显示64帧（双声道）
 
 3. 将Qmdct-cover送进GAN网络训练，得到修改概率pro.txt
 
@@ -39,38 +39,35 @@
 ### 四、命令具体含义
 1. c编解码器中做嵌入和提取：
 	a. STC嵌入：embed_STC。利用（matlab生成的exe输出的stego：Sqmdct.txt 放进编码器 替换Qmdct）来嵌入。
-	> embed_STC    -o  stegoname.aac     covername.wav
+	`embed_STC    -o  stegoname.aac     covername.wav`
 	b. STC提取，得到de_Sqmdct.txt。
-	> x-channel-extract_STC    stegoname.aac
+	` x-channel-extract_STC    stegoname.aac`
 
 2. STC-mtb 在Qmdct上做嵌入（生成Sqmdct）和提取
-	lt_emb_STC    2000_Qmdct_cover\00124.wavQmdct_cover.txt    1500_pro\00124.wavQmdct_cover.txt    秘密信息.txt    0.5
-	lt_extr_STC     de_Sqmdct.txt    n_msg_bits.txt    提取出来的信息.txt
-
-3. 提取Qmdct
-	faac_Qmdct_generate     -o  aac_file\124.aac     wav_file\00124.wav
+	`lt_emb_STC    2000_Qmdct_cover\00124.wavQmdct_cover.txt    1500_pro\00124.wavQmdct_cover.txt    秘密信息.txt    0.5`
+	`lt_extr_STC     de_Sqmdct.txt    n_msg_bits.txt    提取出来的信息.txt`
 
 
 ### 五、其他
 1. Win-操作
 	- 生成目录树
-	tree/f>a.txt
+	`tree/f>a.txt`
 	- 重命名
-	rename    oldname  newname
+	`rename    oldname  newname`
 	- 移动
-	move	faac\faac.txt（原位置）	.\faad（目标位置）
+	`move	faac\faac.txt（原位置）	.\faad（目标位置）`
 	- 复制
-	copy      Cover-1.aac    .\audio
+	`copy      Cover-1.aac    .\audio`
 	- 彻底删除
-	del xxx
+	`del xxx`
 
 2. linux-操作
 	- 打开图片
-	$ eog   a.png  
+	`$ eog   a.png  `
 	- 查看文件信息（时间等）
-	$ stat    xxx-file
+	`$ stat    xxx-file`
 	- 查看特定程序对应的PID 并杀死进程
-	$ ps aux|grep pycharm
-	$ kill -9 [PID]       （从左到右第二个号）
+	`$ ps aux|grep pycharm`
+	`$ kill -9 [PID]       （从左到右第二个号）`
 	
 
