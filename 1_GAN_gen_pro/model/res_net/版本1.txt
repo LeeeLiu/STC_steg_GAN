@@ -1,0 +1,193 @@
+
+import numpy as np
+import six
+
+import torch
+import torch.nn as nn
+
+from collections import namedtuple
+HParams = namedtuple('HParams',
+                     'batch_size, num_classes, start_lrn_rate, decay_rate, feature_row, feature_col, channels, '
+                     'is_training, num_residual_units, weight_decay_rate, BN_decay, optimizer')
+hps = HParams(batch_size=4,  # 'number of samples in each iteration',
+              num_classes=2,  # 'binary classfication',
+              start_lrn_rate=0.001,  # 'starting learning rate',
+              decay_rate=0.95,  # 'decaying rate of learning rate ',
+              feature_row=128,  # 256 --> 128 "lt"
+              feature_col=1024,  # 124 --> 1024
+              channels=4,  # 'number of initial channel'
+              is_training=True,  # "is training or not."
+              num_residual_units=5,  # 'number of residual unit in each different residual module',
+              weight_decay_rate=0.0002,  # 'decaying rate of weight '
+              BN_decay=0.9997,
+              optimizer='adam',  # "optimizer, 'adam' or 'sgd', default to 'adam'."
+              )
+
+
+class Spec_resNet(nn.Module):
+    def __init__(self, hps):
+        super(Spec_resNet, self).__init__()
+        self.hps = hps
+        self.Init_convolution = Init_Conv(self.hps.channels, 10, 3, self._stride_arr(1))
+        #class Spec_resNet __init__
+        self.strides = [1, 2, 2]
+        self.activate_before_residual = [True, False, False]
+        self.res_func = self._residual
+        self.filters = [10, 10, 20, 40]
+
+    def fixed_conv(self, x, filter_size, in_filters, out_filters, strides):
+        """
+            Args:
+                x:       'batch_size * feature_row * feature_col * in_filters'.
+                return:  'batch_size * feature_row * feature_col * out_filters'.
+        """
+        kernel = np.asarray([0, -1, 0, 0, 1, 0, 0, 0, 0,
+            0, 1, 0, 0, -2, 0, 0, 1, 0,
+            0, 0, 0, -1, 1, 0, 0, 0, 0,
+            0, 0, 0, 1, -2, 1, 0, 0, 0])
+        """
+        ([[[0, -1, 0], [0, 1, 0], [0, 0, 0]],
+        [[0, 1, 0], [0, -2, 0], [0, 1, 0]],
+        [[0, 0, 0], [-1, 1, 0], [0, 0, 0]],
+        [[0, 0, 0], [1, -2, 1], [0, 0, 0]]])                
+         """
+        kernel = torch.from_numpy(kernel)
+        kernel = kernel.float()
+        filters = kernel.view(out_filters, in_filters, filter_size, filter_size)
+        return nn.functional.conv2d(x, filters, stride=strides, padding=(filter_size-1)//2)
+
+
+    def _conv(self, x, filter_size, in_filters, out_filters, strides):
+        m = nn.Conv2d(in_filters, out_filters, filter_size, stride=strides, padding=1)  # nn.Conv2d�÷� �Ҽ���Դ��ʵ��
+        return m(x)
+
+    def _residual(self, x, in_filter, out_filter, stride, activate_before_residual=False):
+        """Residual unit with 2 sub layers."""
+        if activate_before_residual:
+        #    with tf.variable_scope('shared_activation'):
+            x = self._batch_norm(x)
+            x = self._activate_f(x)
+            orig_x = x
+        else:
+            # with tf.variable_scope('residual_only_activation'):
+            orig_x = x
+            x = self._batch_norm(x)
+            x = self._activate_f(x)
+
+        # with tf.variable_scope('sub1'):
+        x = self._conv(x, 3, in_filter, out_filter, stride)
+
+        # with tf.variable_scope('sub2'):
+        x = self._batch_norm(x)
+        x = self._activate_f(x)
+        x = self._conv(x, 3, out_filter, out_filter, [1, 1])  # ԭ����[1, 1, 1, 1]
+
+        # with tf.variable_scope('sub_add'):
+        if in_filter != out_filter:
+            avg_pool = nn.AvgPool2d(stride, stride)
+            orig_x = avg_pool(orig_x)
+            orig_x = nn.functional.pad(orig_x,
+                (0, 0,  0, 0,(out_filter - in_filter) // 2,  (out_filter - in_filter) // 2, 0, 0), "constant")
+
+        x += orig_x
+
+        print('image after unit %s', x.shape)
+        return x
+## here		
+
+    # define the strides on convolutional operations
+    def _stride_arr(self, stride):
+        """Map a stride scalar to the stride array for tf.nn.conv2d."""
+        return [stride, stride]
+
+    def _activate_f(self, x):
+        m = nn.ReLU()
+        return m(x)
+
+    def _fully_connected(self, x, out_dim):
+        m = nn.Linear(x.shape[1], out_dim)
+        return m(x)
+
+    def _batch_norm(self, x):
+        """Batch normalization.
+        num_features: `C` from an expected input of size`(N, C, H, W)`
+        ���ӣ�
+        m = nn.BatchNorm2d(100, affine=False)
+        input = torch.randn(20, 100, 35, 45)
+        output = m(input)
+        """
+        m = nn.BatchNorm2d(x.shape[1])
+        y = m(x)
+        return y
+
+    def _global_avg_pool(self, x):
+        # global average pooling layer
+        # assert x.get_shape().ndims == 4 "lt"        
+        y = torch.mean(x, dim=[2, 3])
+        return y
+
+    def forward(self, x):
+        x = x.float()  # spec_res = x.view(-1, self.hps.feature_row, self.hps.feature_col, 1)
+        # fixed_conv
+        spec_filtered = self.fixed_conv(x, 3, 1, self.hps.channels, [1, 1])  # ԭ����[1, 1, 1, 1]
+        # 'init_conv'
+        x = self.Init_convolution(spec_filtered)
+        # conv-A
+        x = self.res_func(x, self.filters[0], self.filters[1], self._stride_arr(self.strides[0]),
+                     self.activate_before_residual[0])
+        for i in six.moves.range(1, self.hps.num_residual_units):
+            x = self.res_func(x, self.filters[1], self.filters[1], self._stride_arr(1), False)
+        # conv-B
+        x = self.res_func(x, self.filters[1], self.filters[2], self._stride_arr(self.strides[1]),
+                     self.activate_before_residual[1])
+        for i in six.moves.range(1, self.hps.num_residual_units):
+            x = self.res_func(x, self.filters[2], self.filters[2], self._stride_arr(1), False)
+        # conv-C
+        x = self.res_func(x, self.filters[2], self.filters[3], self._stride_arr(self.strides[2]),
+                     self.activate_before_residual[2])
+        for i in six.moves.range(1, self.hps.num_residual_units):
+            x = self.res_func(x, self.filters[3], self.filters[3], self._stride_arr(1), False)
+        # last
+        x = self._batch_norm(x)    # torch.Size([4, 40, 32, 256])
+        x = self._activate_f(x)    # torch.Size([4, 40, 32, 256])
+        # x = self._relu(x) "lt��"
+        x = self._global_avg_pool(x)  # (4,40)
+        # output
+        logits = self._fully_connected(x, self.hps.num_classes)  #(4,2)
+        m = nn.Softmax()
+        out = m(logits)
+        return out
+
+class Init_Conv(nn.Module):
+    def __init__(self, in_filters, out_filters, filter_size, strides):
+        super(Init_Conv, self).__init__()
+
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_filters, out_filters, filter_size, stride=strides, padding=1)
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+# class Conv_A
+class Conv_A(nn.Module):
+    def __init__(self, in_filters, out_filters, filter_size, strides):
+        super(Init_Conv, self).__init__()
+
+        self.layers = nn.Sequential(
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+
+
+def main():
+    model = Spec_resNet(hps)
+    x = torch.rand(4, 1, 128, 1024)
+    y = model(x)
+    print(y.shape)
+
+
+if __name__ == "__main__":
+    main()
