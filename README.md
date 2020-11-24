@@ -11,4 +11,4 @@
 2. 概率转化为失真，利用STC做嵌入提取
 
 ### 图解
-	 ![图解](architecture.png)
+	 ![Fig](architecture.png)
