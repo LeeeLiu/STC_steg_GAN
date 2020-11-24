@@ -10,5 +10,5 @@
 1. 经过GAN训练之后，generator G 合成修改概率
 2. 概率转化为失真，利用STC做嵌入提取
 
-### 图解
-	 ![Fig](https://github.com/LeeeLiu/STC_steg_GAN/blob/master/architecture.png)
+
+![Fig](https://github.com/LeeeLiu/STC_steg_GAN/blob/master/architecture.png)
