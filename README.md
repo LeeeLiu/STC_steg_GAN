@@ -11,4 +11,4 @@
 2. 概率转化为失真，利用STC做嵌入提取
 
 ### 图解
-	 ![Fig](architecture.png)
+	 ![Fig](https://github.com/LeeeLiu/STC_steg_GAN/blob/master/architecture.png)
