@@ -12,4 +12,4 @@
 
 ### 图解
 
-![Fig](./architecture.png)
+![Fig](https://github.com/LeeeLiu/STC_steg_GAN/architecture.png)
