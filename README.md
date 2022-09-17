@@ -5,6 +5,7 @@
 ## 方法一：直接，网络合成stego
 1. 图解
   - ![HiDDeN](https://papers-1300025586.cos.ap-nanjing.myqcloud.com/GAN%2FHiDDeN.png)
+  - ![svg](https://github.com/LeeeLiu/STC_steg_GAN/blob/master/1.svg)
 
 ## 方法二：间接，网络学习失真代价
 1. 方法
